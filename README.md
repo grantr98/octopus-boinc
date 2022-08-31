@@ -1,5 +1,5 @@
 # octopus-boinc
-This is a functional but POC of a Python function to automatically check the Octopus Agile API for current tariff information, then automatically run BOINC if the price is below the set threshold.
+This is a functional POC of a Python function to automatically check the Octopus Agile API for current tariff information, then automatically run BOINC if the price is below the set threshold.
 
 A sample .env file is enumerated as env.sample, and requires an API key and tariff information available at https://octopus.energy/dashboard/developer/.
 
