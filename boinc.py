@@ -40,7 +40,7 @@ def round_up(t):  # round time up to nearest half-hour (almost to bodge around m
 
 
 def cur_price(data, time):
-    result = 36.00  # default value always higher than possible on Agile so will not start BOINC if it cannot find data
+    result = 1001.00  # default value always higher than possible on Agile so will not start BOINC if it cannot find data
     for a in data:
         if a['valid_from'] == time:
             logging.debug(
