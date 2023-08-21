@@ -1,0 +1,4 @@
+cachetools
+prometheus_client
+python-dotenv
+requests

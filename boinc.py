@@ -9,7 +9,7 @@ import logging
 retries = 0
 
 def fetch():  # GET current tariff data from Octopus API
-    url = "{url}/{prod_code}/electricity-tariffs/{tariff}/standard-unit-rates".format(url=os.getenv('BASE_URL'),
+    url = "{url}/v1/products/{prod_code}/electricity-tariffs/{tariff}/standard-unit-rates".format(url=os.getenv('BASE_URL'),
                                                                                       prod_code=os.getenv(
                                                                                           'PRODUCT_CODE'),
                                                                                       tariff=os.getenv('TARIFF'))
