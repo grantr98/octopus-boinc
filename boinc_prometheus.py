@@ -12,6 +12,14 @@ from sys import platform
 import logging
 from cachetools import cached, TTLCache
 
+
+def round_down(t):  # round time down to nearest half-hour
+    if t.minute >= 30:
+        return t.replace(second=0, microsecond=0, minute=30)
+    else:
+        return t.replace(second=0, microsecond=0, minute=0)
+
+
 def cur_price(data, time):
     result = 101.00
     for a in data:
@@ -41,7 +49,7 @@ def fetch_unit_rates():  # GET current tariff data from Octopus API
         exit(0)
 
 
-@cached(cache=TTLCache(maxsize=2048, ttl=32000))
+@cached(cache=TTLCache(maxsize=2048, ttl=21600))
 def fetch_consumption():  # GET consumption data from Octopus API
     url = "{url}/v1/electricity-meter-points/{mpan}/meters/{serial_number}/consumption/" \
           "?group_by=day&page_size=2&order_by=-period".format(
@@ -73,24 +81,44 @@ def set_current_price(time, unit_rates):
 
 
 def set_consumption(consumption):
-    CONSUMPTION_YESTERDAY.set(consumption[1]['consumption'])  # Yesterdays value is second result on first page.
+    logging.debug(
+        "Located: {valid_from} {data}".format(valid_from=consumption[0]['interval_start'], data=consumption[1]))
+
+    CONSUMPTION_YESTERDAY.set(consumption[0]['consumption'])
+
+
+def fetch_rates_and_update(rd_utc):
+    rates = fetch_unit_rates()['results']
+    consumption = fetch_consumption()['results']
+    set_current_price(rd_utc, rates)
+    set_consumption(consumption)
+    time.sleep(30)
 
 
 if __name__ == '__main__':
     path = join(dirname(__file__), '.env')
-    logging.basicConfig(filename='boinc{date}.log'.format(date=datetime.now().date()), format='%(asctime)s %(message)s',
+
+    logging.basicConfig(handlers=[logging.FileHandler('boinc{date}.log'.format(date=datetime.now().date())), logging.StreamHandler()], format='%(asctime)s %(message)s',
                         level=logging.DEBUG)
+
+
     load_dotenv(path)
 
     # Start up the server to expose the metrics.
     start_http_server(8000)
+    now_utc = datetime.utcnow()
 
-    while True:
-        rates = fetch_unit_rates()['results']
-        consumption = fetch_consumption()['results']
+    logging.debug(f"The time is {now_utc}, first boot:")
+    rd_utc = round_down(t=now_utc)  # Clamp time to nearest half hour.
+    fetch_rates_and_update(rd_utc=rd_utc)
+
+    while True:  # Now loop
+
         now_utc = datetime.utcnow()
 
-        if (30, 0) in now_utc.minute:
-            set_current_price(rd_utc, rates)
-            set_consumption(consumption)
-            time.sleep(30)
+        if now_utc.minute == 30 or now_utc.minute == 0:  # If on the hour or half hour:
+            logging.debug(f"The time is {now_utc}, updating:")
+            rd_utc = round_down(t=now_utc)  # Clamp time to nearest half hour.
+            fetch_rates_and_update(rd_utc=rd_utc)
+
+        time.sleep(60)
