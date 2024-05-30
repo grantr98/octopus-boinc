@@ -32,7 +32,7 @@ def cur_price(data, time):
     return result
 
 
-@cached(cache=TTLCache(maxsize=2048, ttl=1800))
+@cached(cache=TTLCache(maxsize=2048, ttl=720))
 def fetch_unit_rates():  # GET current tariff data from Octopus API
     url = "{url}/v1/products/{prod_code}/electricity-tariffs/{tariff}/standard-unit-rates".format(
         url=os.getenv('BASE_URL'),
@@ -49,7 +49,7 @@ def fetch_unit_rates():  # GET current tariff data from Octopus API
         exit(0)
 
 
-@cached(cache=TTLCache(maxsize=2048, ttl=21600))
+@cached(cache=TTLCache(maxsize=2048, ttl=180))
 def fetch_consumption():  # GET consumption data from Octopus API
     url = "{url}/v1/electricity-meter-points/{mpan}/meters/{serial_number}/consumption/" \
           "?group_by=day&page_size=2&order_by=-period".format(
