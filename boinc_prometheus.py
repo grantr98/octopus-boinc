@@ -84,7 +84,7 @@ def set_consumption(consumption):
     logging.debug(
         "Located: {valid_from} {data}".format(valid_from=consumption[0]['interval_start'], data=consumption[1]))
 
-    CONSUMPTION_YESTERDAY.set(consumption[0]['consumption'])
+    CONSUMPTION_YESTERDAY.set(consumption[1]['consumption'])
 
 
 def fetch_rates_and_update(rd_utc):
