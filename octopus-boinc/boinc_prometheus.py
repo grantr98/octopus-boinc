@@ -7,33 +7,13 @@ import os
 from os.path import join, dirname
 from dotenv import load_dotenv
 import json
-from datetime import datetime
-from sys import platform
+import datetime
+from sys import platform, argv
 import logging
 from cachetools import cached, TTLCache
+from pathlib import Path
 
-
-def round_down(t):  # round time down to nearest half-hour
-    if t.minute >= 30:
-        return t.replace(second=0, microsecond=0, minute=30)
-    else:
-        return t.replace(second=0, microsecond=0, minute=0)
-
-
-def cur_price(data, time):
-    result = 101.00
-    for a in data:
-        if a["valid_from"] == time:
-            logging.debug(
-                "Located: {valid_from} {data}".format(
-                    valid_from=a["valid_from"], data=a
-                )
-            )
-            result = a
-            break
-
-    return result
-
+from boinc import round_down,cur_price
 
 @cached(cache=TTLCache(maxsize=2048, ttl=720))
 def fetch_unit_rates():  # GET current tariff data from Octopus API
@@ -97,7 +77,7 @@ CONSUMPTION_YESTERDAY = Gauge(
 
 def set_current_price(time, unit_rates):
     price = cur_price(
-        data=unit_rates, time=time.isoformat() + "Z"
+        data=unit_rates, time=time.isoformat()
     )  # Octopus adds "Z" to end of ISO Time, python doesn't
     CURRENT_PRICE_INC_VAT.set(price["value_inc_vat"])
     CURRENT_PRICE_EXC_VAT.set(price["value_exc_vat"])
@@ -122,8 +102,9 @@ def fetch_rates_and_update(rd_utc):
 
 
 if __name__ == "__main__":
-    path = join(dirname(__file__), ".env")
 
+    envfile_path = argv[1]
+    path = Path(envfile_path)
     logging.basicConfig(
         handlers=[
             logging.FileHandler("boinc{date}.log".format(date=datetime.now().date())),
@@ -137,18 +118,18 @@ if __name__ == "__main__":
 
     # Start up the server to expose the metrics.
     start_http_server(8000)
-    now_utc = datetime.utcnow()
+    now_utc = datetime.datetime.now(datetime.UTC)
 
     logging.debug(f"The time is {now_utc}, first boot:")
-    rd_utc = round_down(t=now_utc)  # Clamp time to nearest half hour.
+    rd_utc = round_down(timestamp=now_utc)  # Clamp time to nearest half hour.
     fetch_rates_and_update(rd_utc=rd_utc)
 
     while True:  # Now loop
-        now_utc = datetime.utcnow()
+        now_utc = datetime.datetime.now(datetime.UTC)
 
         if now_utc.minute == 30 or now_utc.minute == 0:  # If on the hour or half hour:
             logging.debug(f"The time is {now_utc}, updating:")
-            rd_utc = round_down(t=now_utc)  # Clamp time to nearest half hour.
+            rd_utc = round_down(timestamp=now_utc)  # Clamp time to nearest half hour.
             fetch_rates_and_update(rd_utc=rd_utc)
 
         time.sleep(60)
